@@ -1,7 +1,7 @@
 import PocketBase from 'pocketbase';
 
 // Replace with your actual PocketBase URL if different
-export const pb = new PocketBase('https://pbfrandiazc.duckdns.org/');
+export const pb = new PocketBase('https://cordoba.myaddr.io/');
 
 // Type definitions based on requirements
 export interface OrderItem {
