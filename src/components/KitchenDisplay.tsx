@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { pb } from '../lib/pocketbase';
 import type { OrderItem } from '../lib/pocketbase';
 import { useOrderItems } from '../hooks/useOrderMutations';
-import { Clock, CheckCircle2, Flame, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Flame, AlertCircle } from 'lucide-react';
 
 export default function KitchenDisplay() {
     const { data: orders, isLoading } = useOrderItems();

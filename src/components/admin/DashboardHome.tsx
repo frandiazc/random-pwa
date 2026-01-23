@@ -74,10 +74,10 @@ export default function DashboardHome() {
                     <div className="p-4">
                         {pendingOrders?.items && pendingOrders.items.length > 0 ? (
                             <div className="space-y-2">
-                                {pendingOrders.items.slice(0, 5).map((order: { id: string; name: string; quantity: number; created: string }) => (
+                                {pendingOrders.items.slice(0, 5).map((order) => (
                                     <div key={order.id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-                                        <span className="font-medium">{order.name}</span>
-                                        <span className="text-sm text-slate-500">x{order.quantity}</span>
+                                        <span className="font-medium">{order['name'] as string}</span>
+                                        <span className="text-sm text-slate-500">x{order['quantity'] as number}</span>
                                     </div>
                                 ))}
                             </div>
