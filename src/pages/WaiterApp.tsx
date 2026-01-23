@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { pb } from '../lib/pocketbase';
 import { useNavigate } from 'react-router-dom';
-import { Users, Clock, ChefHat } from 'lucide-react';
+import { Users, Clock, ChefHat, Receipt } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface Zone {
@@ -33,6 +33,11 @@ export default function WaiterApp() {
 
     const handleTableSelect = (table: Table) => {
         navigate(`/waiter/table/${table.id}`);
+    };
+
+    const handleTableAccount = (e: React.MouseEvent, tableId: string) => {
+        e.stopPropagation();
+        navigate(`/waiter/account/${tableId}`);
     };
 
     const statusConfig = {
@@ -105,6 +110,16 @@ export default function WaiterApp() {
                                                 {table.capacity}
                                             </div>
                                         </div>
+
+                                        {table.status === 'occupied' && (
+                                            <div
+                                                onClick={(e) => handleTableAccount(e, table.id)}
+                                                className="absolute bottom-2 right-2 p-1.5 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200 transition z-10"
+                                                title="Ver cuenta"
+                                            >
+                                                <Receipt size={14} />
+                                            </div>
+                                        )}
                                     </button>
                                 ))}
                             </div>

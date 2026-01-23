@@ -16,7 +16,12 @@ import CategoryManager from './components/admin/CategoryManager';
 import ProductManager from './components/admin/ProductManager';
 
 // Waiter components
+// Waiter components
 import TableOrder from './components/waiter/TableOrder';
+import TableAccount from './components/waiter/TableAccount';
+
+// Bar components
+import BarInterface from './components/bar/BarInterface';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -55,7 +60,12 @@ function AppRoutes() {
 
       {/* Waiter app (public for now, could add PIN auth later) */}
       <Route path="/waiter" element={<WaiterApp />} />
+      <Route path="/waiter" element={<WaiterApp />} />
       <Route path="/waiter/table/:tableId" element={<TableOrder />} />
+      <Route path="/waiter/account/:tableId" element={<TableAccount />} />
+
+      {/* Bar Interface */}
+      <Route path="/bar" element={<BarInterface />} />
 
       {/* Admin routes (protected) */}
       <Route

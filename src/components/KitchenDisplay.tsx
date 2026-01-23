@@ -1,36 +1,46 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { pb } from '../lib/pocketbase';
 import type { OrderItem } from '../lib/pocketbase';
 import { useOrderItems } from '../hooks/useOrderMutations';
-import { CheckCircle2, Flame, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Flame, AlertCircle, Clock, ChefHat, Zap } from 'lucide-react';
+import { clsx } from 'clsx';
 
 export default function KitchenDisplay() {
     const { data: orders, isLoading } = useOrderItems();
     const queryClient = useQueryClient();
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Update clock every second
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     // Real-time Subscription
     useEffect(() => {
-        // Subscribe to ALL changes in order_items
         pb.collection('order_items').subscribe<OrderItem>('*', (e) => {
             console.log('Real-time event:', e.action, e.record);
+
+            // Play sound on new order
+            if (e.action === 'create') {
+                try {
+                    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                    audio.volume = 0.5;
+                    audio.play().catch(() => { });
+                } catch { }
+            }
 
             queryClient.setQueryData<OrderItem[]>(['order_items'], (oldData) => {
                 if (!oldData) return [];
 
                 switch (e.action) {
                     case 'create':
-                        // Add new item to the TOP (since we sort by -created)
                         return [e.record, ...oldData];
-
                     case 'delete':
-                        // Remove item instantly
                         return oldData.filter(item => item.id !== e.record.id);
-
                     case 'update':
-                        // Update existing item
                         return oldData.map(item => item.id === e.record.id ? e.record : item);
-
                     default:
                         return oldData;
                 }
@@ -42,56 +52,171 @@ export default function KitchenDisplay() {
         };
     }, [queryClient]);
 
+    const pendingOrders = orders?.filter(o => o.status === 'pending') || [];
+    const cookingOrders = orders?.filter(o => o.status === 'cooking') || [];
+
+    const updateStatus = async (id: string, status: string) => {
+        await pb.collection('order_items').update(id, { status });
+        queryClient.invalidateQueries({ queryKey: ['order_items'] });
+    };
+
+    const getElapsedTime = (created: string) => {
+        const diff = Math.floor((currentTime.getTime() - new Date(created).getTime()) / 1000);
+        const mins = Math.floor(diff / 60);
+        const secs = diff % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const getUrgencyColor = (created: string) => {
+        const diff = Math.floor((currentTime.getTime() - new Date(created).getTime()) / 1000 / 60);
+        if (diff >= 10) return 'border-red-500 bg-red-500/10';
+        if (diff >= 5) return 'border-amber-500 bg-amber-500/10';
+        return 'border-orange-500';
+    };
+
     return (
-        <div className="bg-slate-900 min-h-screen text-white p-6">
-            <header className="flex items-center justify-between mb-8 border-b border-slate-700 pb-4">
-                <h1 className="text-3xl font-bold flex items-center gap-3">
-                    <Flame className="text-orange-500" />
-                    KDS - Cocina
-                </h1>
-                <div className="flex items-center gap-2 text-slate-400 text-sm">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    Conectado en tiempo real
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
+            {/* Header */}
+            <header className="bg-black/30 backdrop-blur-sm border-b border-white/10 px-6 py-4 sticky top-0 z-10">
+                <div className="flex items-center justify-between max-w-[1800px] mx-auto">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/30">
+                            <Flame size={28} />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold">Cocina</h1>
+                            <p className="text-slate-400 text-sm">Kitchen Display System</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-4 text-sm">
+                            <div className="flex items-center gap-2 bg-orange-500/20 text-orange-400 px-3 py-2 rounded-lg">
+                                <Clock size={16} />
+                                <span className="font-mono">{pendingOrders.length} pendientes</span>
+                            </div>
+                            <div className="flex items-center gap-2 bg-blue-500/20 text-blue-400 px-3 py-2 rounded-lg">
+                                <ChefHat size={16} />
+                                <span className="font-mono">{cookingOrders.length} preparando</span>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-3xl font-mono font-bold">{currentTime.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
+                            <div className="flex items-center gap-2 text-green-400 text-xs">
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                                En tiempo real
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </header>
 
-            {isLoading && <p className="text-center text-slate-500">Cargando tickets...</p>}
-
-            {!isLoading && orders?.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                    <CheckCircle2 size={64} className="text-slate-600 mb-4" />
-                    <p className="text-xl">Todo limpio, Chef.</p>
+            {isLoading && (
+                <div className="flex items-center justify-center py-20">
+                    <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full" />
                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {orders?.map((item) => (
-                    <div key={item.id} className="bg-slate-800 rounded-lg p-4 border-l-4 border-orange-500 shadow-lg animate-in zoom-in duration-300">
-                        <div className="flex justify-between items-start mb-2">
-                            <span className="bg-slate-700 text-xs px-2 py-1 rounded text-slate-300">
-                                {new Date(item.created).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            {/* In a real app, table number would be here */}
-                            <span className="font-mono text-orange-400 font-bold">MESA 1</span>
+            {!isLoading && pendingOrders.length === 0 && cookingOrders.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-32 opacity-50">
+                    <CheckCircle2 size={80} className="text-green-500 mb-6" />
+                    <p className="text-3xl font-bold">Todo al día, Chef</p>
+                    <p className="text-slate-400 mt-2">No hay pedidos pendientes</p>
+                </div>
+            )}
+
+            {/* Orders Grid */}
+            <div className="p-6 max-w-[1800px] mx-auto">
+                {pendingOrders.length > 0 && (
+                    <section className="mb-8">
+                        <h2 className="text-lg font-semibold text-orange-400 mb-4 flex items-center gap-2">
+                            <Zap size={20} />
+                            NUEVOS PEDIDOS
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {pendingOrders.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className={clsx(
+                                        "bg-slate-800/80 backdrop-blur rounded-2xl p-5 border-l-4 shadow-xl transition-all hover:scale-[1.02] animate-in slide-in-from-top duration-300",
+                                        getUrgencyColor(item.created)
+                                    )}
+                                >
+                                    <div className="flex justify-between items-start mb-3">
+                                        <span className="bg-slate-700 text-xs px-3 py-1 rounded-full text-slate-300 font-mono">
+                                            {new Date(item.created).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                        <span className="font-mono text-orange-400 font-bold text-lg">
+                                            MESA {item.table_id ? '?' : '1'}
+                                        </span>
+                                    </div>
+
+                                    <h3 className="text-2xl font-bold mb-2">{item.name}</h3>
+
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <span className="text-4xl font-bold text-white">x{item.quantity}</span>
+                                        <div className="flex items-center gap-1 text-amber-400 font-mono">
+                                            <Clock size={14} />
+                                            {getElapsedTime(item.created)}
+                                        </div>
+                                    </div>
+
+                                    {item.notes && (
+                                        <div className="bg-red-900/40 border border-red-500/30 text-red-200 p-3 rounded-xl text-sm mb-4 flex gap-2 items-start">
+                                            <AlertCircle size={18} className="mt-0.5 shrink-0" />
+                                            <span className="font-medium">{item.notes}</span>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={() => updateStatus(item.id, 'cooking')}
+                                        className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                                    >
+                                        <ChefHat size={20} />
+                                        PREPARANDO
+                                    </button>
+                                </div>
+                            ))}
                         </div>
+                    </section>
+                )}
 
-                        <h3 className="text-xl font-bold mb-1">{item.name}</h3>
-                        <p className="text-slate-400 text-sm mb-3">Cantidad: <span className="text-white font-bold">{item.quantity}</span></p>
+                {cookingOrders.length > 0 && (
+                    <section>
+                        <h2 className="text-lg font-semibold text-blue-400 mb-4 flex items-center gap-2">
+                            <ChefHat size={20} />
+                            EN PREPARACIÓN
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {cookingOrders.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className="bg-blue-900/30 backdrop-blur rounded-2xl p-5 border-l-4 border-blue-500 shadow-xl"
+                                >
+                                    <div className="flex justify-between items-start mb-3">
+                                        <span className="bg-blue-800/50 text-xs px-3 py-1 rounded-full text-blue-300 font-mono">
+                                            {new Date(item.created).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                        <span className="font-mono text-blue-400 font-bold">
+                                            MESA {item.table_id ? '?' : '1'}
+                                        </span>
+                                    </div>
 
-                        {item.notes && (
-                            <div className="bg-red-900/30 text-red-200 p-2 rounded text-sm mb-3 flex gap-2 items-start">
-                                <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                                {item.notes}
-                            </div>
-                        )}
+                                    <h3 className="text-xl font-bold mb-2">{item.name}</h3>
+                                    <p className="text-blue-300 mb-4">x{item.quantity}</p>
 
-                        <div className="mt-auto pt-4 border-t border-slate-700">
-                            <button className="w-full bg-slate-700 hover:bg-green-600 hover:text-white transition py-2 rounded font-medium text-slate-300 text-sm">
-                                MARCAR COMPLETADO
-                            </button>
+                                    <button
+                                        onClick={() => updateStatus(item.id, 'ready')}
+                                        className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                                    >
+                                        <CheckCircle2 size={20} />
+                                        ¡LISTO!
+                                    </button>
+                                </div>
+                            ))}
                         </div>
-                    </div>
-                ))}
+                    </section>
+                )}
             </div>
         </div>
     );
