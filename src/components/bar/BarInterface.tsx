@@ -27,7 +27,8 @@ export default function BarInterface() {
             if (!selectedTable) return [];
             return await pb.collection('order_items').getFullList<OrderItem>({
                 filter: `table_id = "${selectedTable}"`,
-                sort: 'created'
+                sort: 'created',
+                expand: 'product'
             });
         },
         enabled: !!selectedTable
@@ -139,15 +140,21 @@ export default function BarInterface() {
                                     <tfoot className="bg-slate-50 border-t border-slate-200">
                                         <tr>
                                             <td colSpan={3} className="py-4 px-6 text-right font-medium text-slate-600">Subtotal</td>
-                                            <td className="py-4 px-6 text-right font-bold text-slate-800">0.00€</td>
+                                            <td className="py-4 px-6 text-right font-bold text-slate-800">
+                                                {(tableItems?.reduce((sum, item) => sum + ((item.expand?.product?.price || 0) * item.quantity), 0) || 0).toFixed(2)}€
+                                            </td>
                                         </tr>
                                         <tr>
-                                            <td colSpan={3} className="py-4 px-6 text-right font-medium text-slate-600">IVA (10%)</td>
-                                            <td className="py-4 px-6 text-right font-bold text-slate-800">0.00€</td>
+                                            <td colSpan={3} className="py-4 px-6 text-right font-medium text-slate-600">IVA (10%) included</td>
+                                            <td className="py-4 px-6 text-right font-bold text-slate-800">
+                                                {((tableItems?.reduce((sum, item) => sum + ((item.expand?.product?.price || 0) * item.quantity), 0) || 0) - (tableItems?.reduce((sum, item) => sum + ((item.expand?.product?.price || 0) * item.quantity), 0) || 0) / 1.10).toFixed(2)}€
+                                            </td>
                                         </tr>
                                         <tr className="bg-slate-100">
                                             <td colSpan={3} className="py-6 px-6 text-right text-lg font-bold text-slate-800">TOTAL</td>
-                                            <td className="py-6 px-6 text-right text-2xl font-bold text-indigo-600">0.00€</td>
+                                            <td className="py-6 px-6 text-right text-2xl font-bold text-indigo-600">
+                                                {(tableItems?.reduce((sum, item) => sum + ((item.expand?.product?.price || 0) * item.quantity), 0) || 0).toFixed(2)}€
+                                            </td>
                                         </tr>
                                     </tfoot>
                                 </table>
