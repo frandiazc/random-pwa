@@ -116,26 +116,29 @@ export default function BarInterface() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
-                                        {tableItems?.map((item) => (
-                                            <tr key={item.id} className="hover:bg-slate-50">
-                                                <td className="py-4 px-6">
-                                                    <p className="font-medium text-slate-800">{item.name}</p>
-                                                    {item.notes && <p className="text-xs text-orange-500 italic">{item.notes}</p>}
-                                                </td>
-                                                <td className="py-4 px-6 text-center font-mono">{item.quantity}</td>
-                                                <td className="py-4 px-6 text-center">
-                                                    <span className={`text-xs px-2 py-1 rounded-full font-medium uppercase
-                                                        ${item.status === 'served' ? 'bg-green-100 text-green-700' :
-                                                            item.status === 'ready' ? 'bg-blue-100 text-blue-700' :
-                                                                'bg-amber-100 text-amber-700'}`}>
-                                                        {item.status}
-                                                    </span>
-                                                </td>
-                                                <td className="py-4 px-6 text-right font-mono font-bold">
-                                                    0.00€
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {tableItems?.map((item) => {
+                                            const itemPrice = (item.expand?.product?.price || 0) * item.quantity;
+                                            return (
+                                                <tr key={item.id} className="hover:bg-slate-50">
+                                                    <td className="py-4 px-6">
+                                                        <p className="font-medium text-slate-800">{item.name}</p>
+                                                        {item.notes && <p className="text-xs text-orange-500 italic">{item.notes}</p>}
+                                                    </td>
+                                                    <td className="py-4 px-6 text-center font-mono">{item.quantity}</td>
+                                                    <td className="py-4 px-6 text-center">
+                                                        <span className={`text-xs px-2 py-1 rounded-full font-medium uppercase
+                                                            ${item.status === 'served' ? 'bg-green-100 text-green-700' :
+                                                                item.status === 'ready' ? 'bg-blue-100 text-blue-700' :
+                                                                    'bg-amber-100 text-amber-700'}`}>
+                                                            {item.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-4 px-6 text-right font-mono font-bold">
+                                                        {itemPrice.toFixed(2)}€
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                     <tfoot className="bg-slate-50 border-t border-slate-200">
                                         <tr>
